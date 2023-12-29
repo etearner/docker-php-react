@@ -1,0 +1,79 @@
+version: "3"
+
+services:
+  webserver:
+    image: ${app_name:?err}-nginx
+    build: ./services/nginx
+    container_name: ${app_name:?err}-nginx
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ${api_path:?err}:/var/www/api/
+      - ./services/nginx/app:/var/www/app/
+      - ./services/nginx/conf:/etc/nginx/conf.d/
+      - ./services/nginx/ssl:/etc/nginx/ssl/
+    restart: on-failure
+
+  app:
+    image: ${app_name:?err}-node
+    build: ${admin_image:?err}
+    container_name: ${app_name:?err}-app
+    ports:
+      - 3000:3000
+    volumes:
+      - ${admin_path:?err}:/usr/src/app/
+      - ${admin_modules:?err}
+    depends_on:
+      - webserver
+    restart: on-failure
+
+  api:
+    container_name: ${app_name:?err}-api
+    image: ${app_name:?err}-php
+    build:
+      context: ${api_image:?err}
+      args:
+        - UID=${UID:-1000}
+        - GID=${GID:-1000}
+    user: "${UID:-1000}:${GID:-1000}"
+    volumes:
+      - ${api_path:?err}:/var/www/api/
+    depends_on:
+      - webserver
+    restart: on-failure
+
+  db:
+    image: ${app_name:?err}-db
+    container_name: ${app_name:?err}-db
+    build:
+      context: ./services/db
+      args:
+        - UID=${UID:-1000}
+        - GID=${GID:-1000}
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: ${db_user:?err}
+      POSTGRES_PASSWORD: ${db_user_password:?err}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - local_pgdata:/var/lib/postgresql/data
+    restart: on-failure
+
+  dba:
+    image: ${app_name:?err}-dba
+    build: ./services/dba
+    container_name: ${app_name:?err}-dba
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${dba_user:?err}
+      PGADMIN_DEFAULT_PASSWORD: ${dba_password:?err}
+    ports:
+      - 8888:80
+    depends_on:
+      - db
+      - webserver
+    restart: on-failure
+
+volumes:
+  local_pgdata:

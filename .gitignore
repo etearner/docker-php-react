@@ -1,0 +1,10 @@
+.DS_Store
+.idea
+.history
+.vscode
+.env.*
+makefile.conf
+
+node_modules/
+services/db/data/pgdata/*
+services/nginx/ssl/*
